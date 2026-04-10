@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DCU 售后故障诊断平台</title>
+<style>
+  :root{
+    --bg:#0f1117;--bg2:#161b27;--bg3:#1e2538;
+    --border:#2a3350;--accent:#3b82f6;--accent2:#6366f1;
+    --success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+    --text:#e2e8f0;--muted:#8b9ab5;--card:#1a2035;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;line-height:1.6}
+  a{color:var(--accent);text-decoration:none}
+
+  /* Header */
+  .header{background:linear-gradient(135deg,#1a237e 0%,#0d47a1 50%,#01579b 100%);padding:16px 24px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+  .header-logo{width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .header-title{font-size:18px;font-weight:700;color:#fff}
+  .header-sub{font-size:12px;color:rgba(255,255,255,.65);margin-top:2px}
+  .header-stats{margin-left:auto;display:flex;gap:20px}
+  .stat-item{text-align:center}
+  .stat-num{font-size:20px;font-weight:700;color:#60a5fa}
+  .stat-label{font-size:11px;color:rgba(255,255,255,.6)}
+
+  /* Layout */
+  .container{max-width:1400px;margin:0 auto;padding:20px}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px}
+  .tab{padding:10px 20px;cursor:pointer;border-radius:8px 8px 0 0;color:var(--muted);transition:.2s;font-size:13px;font-weight:500}
+  .tab:hover{color:var(--text);background:var(--bg3)}
+  .tab.active{color:#fff;background:var(--accent);box-shadow:0 -2px 8px rgba(59,130,246,.3)}
+  .panel{display:none} .panel.active{display:block}
+
+  /* Cards */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+  .card-title{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px;display:inline-block}
+
+  /* Grid */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+  /* Form elements */
+  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;transition:.2s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+  textarea{resize:vertical;min-height:120px}
+  select option{background:var(--bg2)}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:.2s}
+  .btn-primary{background:var(--accent);color:#fff} .btn-primary:hover{background:#2563eb}
+  .btn-success{background:var(--success);color:#fff} .btn-success:hover{background:#16a34a}
+  .btn-danger{background:var(--danger);color:#fff} .btn-danger:hover{background:#dc2626}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)} .btn-ghost:hover{color:var(--text);border-color:var(--text)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* Upload zone */
+  .upload-zone{border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+  .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(59,130,246,.05)}
+  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .upload-icon{font-size:36px;margin-bottom:10px}
+  .upload-text{color:var(--muted);font-size:13px}
+
+  /* Result box */
+  .result-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;white-space:pre-wrap;font-size:13px;line-height:1.8;max-height:500px;overflow-y:auto}
+  .result-box.kb{border-left:3px solid var(--success)}
+  .result-box.ai{border-left:3px solid var(--accent2)}
+  .result-box.warn{border-left:3px solid var(--warn)}
+
+  /* Badge */
+  .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-kb{background:rgba(34,197,94,.15);color:var(--success)}
+  .badge-ai{background:rgba(99,102,241,.15);color:#818cf8}
+  .badge-warn{background:rgba(245,158,11,.15);color:var(--warn)}
+
+  /* KB list */
+  .kb-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;transition:.2s}
+  .kb-item:hover{border-color:var(--accent)}
+  .kb-item-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .kb-item-title{font-weight:600;flex:1}
+  .kb-item-body{font-size:12px;color:var(--muted);line-height:1.6}
+  .kb-score{font-size:11px;background:rgba(59,130,246,.2);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600}
+
+  /* Category pills */
+  .cat-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .cat-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);transition:.2s}
+  .cat-pill:hover{border-color:var(--accent);color:var(--accent)}
+  .cat-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  /* Search */
+  .search-row{display:flex;gap:10px;margin-bottom:16px}
+  .search-row input{flex:1}
+
+  /* Toast */
+  #toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;color:#fff;font-size:13px;font-weight:500;opacity:0;transition:.3s;z-index:999;pointer-events:none}
+  #toast.show{opacity:1}
+  #toast.ok{background:#22c55e} #toast.err{background:#ef4444} #toast.info{background:#3b82f6}
+
+  /* Spinner */
+  .spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,.3);border-top:2px solid #fff;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Log history */
+  .log-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;transition:.15s}
+  .log-row:hover{background:var(--bg3)}
+  .log-row:last-child{border-bottom:none}
+  .log-file{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .log-time{color:var(--muted);white-space:nowrap}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:500;display:none}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;width:680px;max-width:95vw;max-height:85vh;overflow-y:auto}
+  .modal-title{font-size:16px;font-weight:700;margin-bottom:16px}
+  .modal-close{float:right;cursor:pointer;color:var(--muted);font-size:18px}
+
+  @media(max-width:768px){.grid2,.grid3{grid-template-columns:1fr}.header-stats{display:none}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">🔬</div>
+  <div>
+    <div class="header-title">DCU 售后故障诊断平台</div>
+    <div class="header-sub">After-sales Fault Diagnosis Platform · HYGON DCU</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-item"><div class="stat-num" id="hKbCount">-</div><div class="stat-label">知识库条目</div></div>
+    <div class="stat-item"><div class="stat-num" id="hLogCount">-</div><div class="stat-label">分析记录</div></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('analyze')">📋 日志上传 & 分析</div>
+    <div class="tab" onclick="switchTab('kb')">📚 知识库管理</div>
+    <div class="tab" onclick="switchTab('search')">🔍 知识库搜索</div>
+    <div class="tab" onclick="switchTab('history')">🕐 分析历史</div>
+  </div>
+
+  <!-- ══════════ Panel: Analyze ══════════ -->
+  <div class="panel active" id="panel-analyze">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">上传日志文件</div>
+          <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".log,.txt,.json,.dmesg" onchange="handleFileSelect(this)">
+            <div class="upload-icon">📂</div>
+            <div style="font-weight:600;margin-bottom:4px">拖拽或点击上传</div>
+            <div class="upload-text">支持 .log .txt .dmesg .json 格式</div>
+          </div>
+          <div id="fileInfo" style="margin-top:10px;font-size:12px;color:var(--success);display:none"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">或粘贴日志内容</div>
+          <textarea id="logContent" placeholder="将 dmesg / 系统日志 / 错误信息粘贴到此处...\n\n示例：\n[12345.678] hycu 0000:03:00.0: hycu:(serial:ABC123)XID:81, pasid:42, pid:1234, tgid:1234, sub block: 0, info:src_id:0 ring:241 page_fault from"></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="doAnalyze()" style="flex:1">
+            <span>🔎 开始分析</span>
+          </button>
+          <button class="btn btn-ghost" onclick="clearInput()">清空</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" id="resultCard" style="display:none">
+          <div class="card-title" style="justify-content:space-between">
+            分析结果
+            <div id="resultBadge" class="badge badge-kb"></div>
+          </div>
+          <div id="resultScore" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <div class="result-box" id="resultBox"></div>
+
+          <div id="kbHitsSection" style="margin-top:14px;display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">📎 相关知识库条目</div>
+            <div id="kbHitsList"></div>
+          </div>
+        </div>
+
+        <div class="card" id="emptyState">
+          <div style="text-align:center;padding:40px;color:var(--muted)">
+            <div style="font-size:48px;margin-bottom:12px">🤖</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:8px">智能故障诊断</div>
+            <div style="font-size:13px">上传日志文件或粘贴日志内容，<br>系统将优先匹配知识库，匹配不足时调用 AI 分析</div>
+            <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px;text-align:left;font-size:12px">
+              <div style="color:var(--success);margin-bottom:6px">✅ 知识库匹配</div>
+              <div style="color:var(--muted)">相关度 ≥ 12% 时从本地知识库返回解决方案</div>
+              <div style="color:var(--accent2);margin:10px 0 6px">🤖 AI 智能分析</div>
+              <div style="color:var(--muted)">相关度不足时调用 AI 大模型进行深度分析<br>需设置环境变量 ANTHROPIC_API_KEY</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Panel: Knowledge Base ══════════ -->
+  <div class="panel" id="panel-kb">
+    <div class="grid2">
+      <!-- Add new entry -->
+      <div>
+        <div class="card">
+          <div class="card-title">新增知识库条目</div>
+          <div style="display:grid;gap:12px">
+            <div>
+              <label>分类 *</label>
+              <select id="kbCategory">
+                <option value="">— 请选择 —</option>
+                <option>硬件驱动</option><option>DTK</option><option>DAS</option>
+                <option>服务器</option><option>大模型</option><option>通用模型</option>
+              </select>
+            </div>
+            <div>
+              <label>标题 *</label>
+              <input id="kbTitle" placeholder="简短描述故障标题，如：XID 81 VM fault">
+            </div>
+            <div>
+              <label>问题描述 *</label>
+              <textarea id="kbProblem" style="min-height:80px" placeholder="详细描述故障现象、触发条件、错误日志特征..."></textarea>
+            </div>
+            <div>
+              <label>解决方案 *</label>
+              <textarea id="kbSolution" style="min-height:100px" placeholder="分步骤描述解决方案..."></textarea>
+            </div>
+            <div>
+              <label>关键词（空格分隔，用于检索）</label>
+              <input id="kbKeywords" placeholder="XID 81 VM fault 显存 越界 page fault">
+            </div>
+            <div>
+              <label>来源</label>
+              <input id="kbSource" placeholder="如：手册、FAQ、客户案例">
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-success" onclick="addKbEntry()" style="flex:1">✅ 添加条目</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">批量导入（JSON）</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+            上传 JSON 文件，格式为数组，每项包含 category/title/problem/solution 字段
+          </div>
+          <div class="upload-zone" style="padding:20px" onclick="document.getElementById('importFile').click()">
+            <input type="file" id="importFile" accept=".json" onchange="importKb(this)">
+            <div>📤 点击上传 JSON 文件</div>
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="downloadTemplate()">⬇ 下载 JSON 模板</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KB list -->
+      <div>
+        <div class="card" style="height:calc(100vh - 200px);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="card-title" style="margin:0;flex:1">知识库列表</div>
+            <input id="kbFilterInput" placeholder="过滤..." style="width:160px;padding:6px 12px" oninput="loadKbList()">
+            <select id="kbFilterCat" style="width:120px;padding:6px" onchange="loadKbList()">
+              <option value="all">全部分类</option>
+              <option>硬件驱动</option><option>DTK</option><option>DAS</option>
+              <option>服务器</option><option>大模型</option><option>通用模型</option>
+            </select>
+          </div>
+          <div id="kbList" style="flex:1;overflow-y:auto"></div>
+          <div id="kbTotal" style="font-size:12px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Panel: Search ══════════ -->
+  <div class="panel" id="panel-search">
+    <div class="card">
+      <div class="card-title">知识库搜索</div>
+      <div class="search-row">
+        <input id="searchInput" placeholder="输入关键词、XID 错误码、错误描述..." onkeydown="if(event.key==='Enter')doSearch()">
+        <select id="searchCat" style="width:160px">
+          <option value="all">全部分类</option>
+          <option>硬件驱动</option><option>DTK</option><option>DAS</option>
+          <option>服务器</option><option>大模型</option><option>通用模型</option>
+        </select>
+        <button class="btn btn-primary" onclick="doSearch()">🔍 搜索</button>
+      </div>
+      <div class="cat-pills">
+        <div class="cat-pill active" onclick="quickSearch('', this)">全部</div>
+        <div class="cat-pill" onclick="quickSearch('硬件驱动', this)">硬件驱动</div>
+        <div class="cat-pill" onclick="quickSearch('DTK', this)">DTK</div>
+        <div class="cat-pill" onclick="quickSearch('DAS', this)">DAS</div>
+        <div class="cat-pill" onclick="quickSearch('服务器', this)">服务器</div>
+        <div class="cat-pill" onclick="quickSearch('大模型', this)">大模型</div>
+        <div class="cat-pill" onclick="quickSearch('通用模型', this)">通用模型</div>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ Panel: History ══════════ -->
+  <div class="panel" id="panel-history">
+    <div class="card">
+      <div class="card-title">分析历史（最近 50 条）</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modalTitle"></span>
+      <span class="modal-close" onclick="closeModal()">✕</span>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────
+let selectedFile = null;
+
+// ─── Tab switching ───────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const panels = ['analyze','kb','search','history'];
+    t.classList.toggle('active', panels[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'kb') loadKbList();
+  if (name === 'history') loadHistory();
+  if (name === 'search') doSearch();
+}
+
+// ─── Toast ───────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  setTimeout(() => el.className = '', 2800);
+}
+
+// ─── Stats ───────────────────────────────────────────────────────
+async function loadStats() {
+  const res = await fetch('/api/stats');
+  const d = await res.json();
+  document.getElementById('hKbCount').textContent = d.kb_count;
+  document.getElementById('hLogCount').textContent = d.log_count;
+}
+loadStats();
+
+// ─── File handling ─────────────────────────────────────────────
+function handleFileSelect(input) {
+  if (!input.files[0]) return;
+  selectedFile = input.files[0];
+  document.getElementById('fileInfo').style.display = 'block';
+  document.getElementById('fileInfo').textContent = `✅ 已选择：${selectedFile.name} (${(selectedFile.size/1024).toFixed(1)} KB)`;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('logContent').value = e.target.result.slice(0, 3000); };
+  reader.readAsText(selectedFile);
+}
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) { selectedFile = f; document.getElementById('fileInput').files; handleFileSelect({files:[f]}); }
+});
+
+function clearInput() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('logContent').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+}
+
+// ─── Analyze ─────────────────────────────────────────────────────
+async function doAnalyze() {
+  const content = document.getElementById('logContent').value.trim();
+  if (!content && !selectedFile) { toast('请上传日志文件或粘贴日志内容','err'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.innerHTML = '<div class="spinner"></div> 分析中...';
+  btn.disabled = true;
+
+  try {
+    let res;
+    if (selectedFile) {
+      const fd = new FormData();
+      fd.append('file', selectedFile);
+      if (content) fd.append('content', content);
+      res = await fetch('/api/analyze', { method:'POST', body:fd });
+    } else {
+      const fd = new FormData();
+      fd.append('content', content);
+      res = await fetch('/api/analyze', { method:'POST', body:fd });
+    }
+
+    const d = await res.json();
+    if (d.error) { toast(d.error, 'err'); return; }
+
+    document.getElementById('emptyState').style.display = 'none';
+    const rc = document.getElementById('resultCard');
+    rc.style.display = 'block';
+
+    const rb = document.getElementById('resultBox');
+    rb.textContent = d.result;
+    rb.className = 'result-box ' + (d.match_type === 'KB' ? 'kb' : d.match_type === 'AI' ? 'ai' : 'warn');
+
+    const badge = document.getElementById('resultBadge');
+    if (d.match_type === 'KB') { badge.textContent = '✅ 知识库匹配'; badge.className = 'badge badge-kb'; }
+    else if (d.match_type === 'AI') { badge.textContent = '🤖 AI 分析'; badge.className = 'badge badge-ai'; }
+    else { badge.textContent = '📋 知识库参考'; badge.className = 'badge badge-warn'; }
+
+    document.getElementById('resultScore').textContent = `知识库相关度：${(d.score * 100).toFixed(1)}%`;
+
+    const hitsEl = document.getElementById('kbHitsSection');
+    const hitsList = document.getElementById('kbHitsList');
+    if (d.kb_hits && d.kb_hits.length) {
+      hitsEl.style.display = 'block';
+      hitsList.innerHTML = d.kb_hits.map(h =>
+        `<div class="kb-item" style="padding:10px;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:var(--accent)">${h.category}</span>
+            <span style="font-weight:600;font-size:13px;flex:1">${h.title}</span>
+            <span class="kb-score">${(h.score*100).toFixed(0)}%</span>
+          </div>
+        </div>`
+      ).join('');
+    } else {
+      hitsEl.style.display = 'none';
+    }
+
+    loadStats();
+    toast('分析完成', 'ok');
+  } catch(e) {
+    toast('请求失败: ' + e.message, 'err');
+  } finally {
+    btn.innerHTML = '<span>🔎 开始分析</span>';
+    btn.disabled = false;
+  }
+}
+
+// ─── KB management ───────────────────────────────────────────────
+async function loadKbList() {
+  const q = document.getElementById('kbFilterInput').value;
+  const cat = document.getElementById('kbFilterCat').value;
+  const url = `/api/kb/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`;
+  const res = await fetch(url);
+  const items = await res.json();
+
+  const listEl = document.getElementById('kbList');
+  const totalEl = document.getElementById('kbTotal');
+  totalEl.textContent = `共 ${items.length} 条`;
+
+  if (!items.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">暂无条目</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(item => `
+    <div class="kb-item">
+      <div class="kb-item-header">
+        <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:var(--accent)">${item.category}</span>
+        <span class="kb-item-title">${item.title}</span>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteKb(${item.id}, event)">🗑</button>
+      </div>
+      <div class="kb-item-body">${item.problem.slice(0,100)}${item.problem.length>100?'...':''}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">来源：${item.source || '—'} · ${item.created_at}</div>
+    </div>
+  `).join('');
+}
+
+async function addKbEntry() {
+  const data = {
+    category: document.getElementById('kbCategory').value,
+    title: document.getElementById('kbTitle').value.trim(),
+    problem: document.getElementById('kbProblem').value.trim(),
+    solution: document.getElementById('kbSolution').value.trim(),
+    keywords: document.getElementById('kbKeywords').value.trim(),
+    source: document.getElementById('kbSource').value.trim() || '手动录入',
+  };
+  if (!data.category || !data.title || !data.problem || !data.solution) {
+    toast('请填写必填项（分类、标题、问题、方案）', 'err'); return;
+  }
+  const res = await fetch('/api/kb', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+  const d = await res.json();
+  if (d.ok) {
+    toast('已添加', 'ok');
+    ['kbCategory','kbTitle','kbProblem','kbSolution','kbKeywords','kbSource'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el.tagName === 'SELECT') el.value = ''; else el.value = '';
+    });
+    loadKbList(); loadStats();
+  } else { toast(d.error, 'err'); }
+}
+
+async function deleteKb(id, e) {
+  e.stopPropagation();
+  if (!confirm('确定删除该条目？')) return;
+  await fetch(`/api/kb/${id}`, { method:'DELETE' });
+  toast('已删除', 'ok');
+  loadKbList(); loadStats();
+}
+
+async function importKb(input) {
+  if (!input.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  const res = await fetch('/api/kb/import', { method:'POST', body:fd });
+  const d = await res.json();
+  if (d.ok) { toast(`成功导入 ${d.imported} 条`, 'ok'); loadKbList(); loadStats(); }
+  else { toast('导入失败: ' + d.error, 'err'); }
+}
+
+function downloadTemplate() {
+  const template = [
+    { category:'硬件驱动', title:'示例：XID XX 错误', problem:'描述故障现象', solution:'分步骤解决方案', keywords:'关键词 空格分隔', source:'来源' }
+  ];
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
+  a.download = 'kb_template.json'; a.click();
+}
+
+// ─── Search ──────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  const cat = document.getElementById('searchCat').value;
+  const res = await fetch(`/api/kb/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`);
+  const items = await res.json();
+
+  const el = document.getElementById('searchResults');
+  if (!items.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">未找到相关条目</div>';
+    return;
+  }
+
+  el.innerHTML = items.map(item => `
+    <div class="kb-item" onclick="showDetail(${JSON.stringify(item).replace(/"/g,'&quot;')})">
+      <div class="kb-item-header">
+        <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:var(--accent)">${item.category}</span>
+        <span class="kb-item-title">${item.title}</span>
+        ${item.score != null ? `<span class="kb-score">${(item.score*100).toFixed(0)}%</span>` : ''}
+      </div>
+      <div class="kb-item-body">${item.problem.slice(0,150)}${item.problem.length>150?'...':''}</div>
+    </div>
+  `).join('');
+}
+
+function quickSearch(cat, el) {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('searchCat').value = cat || 'all';
+  document.getElementById('searchInput').value = '';
+  doSearch();
+}
+
+function showDetail(item) {
+  document.getElementById('modalTitle').textContent = `[${item.category}] ${item.title}`;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:grid;gap:14px">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">🔍 问题描述</div>
+        <div style="background:var(--bg);padding:12px;border-radius:8px;white-space:pre-wrap;font-size:13px">${item.problem}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">✅ 解决方案</div>
+        <div style="background:var(--bg);padding:12px;border-radius:8px;white-space:pre-wrap;font-size:13px">${item.solution}</div>
+      </div>
+      ${item.keywords ? `<div style="font-size:12px;color:var(--muted)">关键词：${item.keywords}</div>` : ''}
+      <div style="font-size:12px;color:var(--muted)">来源：${item.source || '—'} · ${item.created_at}</div>
+    </div>`;
+  document.getElementById('detailModal').classList.add('show');
+}
+function closeModal() { document.getElementById('detailModal').classList.remove('show'); }
+document.getElementById('detailModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ─── History ─────────────────────────────────────────────────────
+async function loadHistory() {
+  const res = await fetch('/api/logs');
+  const logs = await res.json();
+  const el = document.getElementById('historyList');
+  if (!logs.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">暂无记录</div>'; return; }
+  el.innerHTML = logs.map(l => `
+    <div class="log-row" onclick='showLogDetail(${JSON.stringify(l).replace(/'/g,"&#39;")})'>
+      <span>${l.match_type === 'KB' ? '✅' : l.match_type === 'AI' ? '🤖' : '📋'}</span>
+      <span class="log-file">📄 ${l.filename}</span>
+      <span class="badge ${l.match_type === 'KB' ? 'badge-kb' : l.match_type === 'AI' ? 'badge-ai' : 'badge-warn'}">${l.match_type}</span>
+      <span style="color:var(--muted);font-size:12px">${(l.score*100).toFixed(0)}%</span>
+      <span class="log-time">🕐 ${l.created_at}</span>
+    </div>
+  `).join('');
+}
+
+function showLogDetail(log) {
+  document.getElementById('modalTitle').textContent = `分析记录：${log.filename}`;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:grid;gap:12px">
+      <div style="display:flex;gap:10px;font-size:12px">
+        <span class="badge ${log.match_type==='KB'?'badge-kb':log.match_type==='AI'?'badge-ai':'badge-warn'}">${log.match_type}</span>
+        <span style="color:var(--muted)">相关度：${(log.score*100).toFixed(1)}%</span>
+        <span style="color:var(--muted)">时间：${log.created_at}</span>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">分析结果</div>
+        <div style="background:var(--bg);padding:12px;border-radius:8px;white-space:pre-wrap;font-size:13px;max-height:400px;overflow-y:auto">${log.result}</div>
+      </div>
+    </div>`;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+// Initial load
+ doSearch();
+</script>
+</body>
+</html>
