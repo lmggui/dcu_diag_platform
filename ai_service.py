@@ -54,8 +54,9 @@ def call_qwen(prompt, api_key, model):
 
 
 def call_zhipu(prompt, api_key, model):
+    endpoint = os.environ.get('ZHIPU_API_BASE', f'https://open.bigmodel.cn/api/paas/v1/model/{model}/invoke')
     resp = requests.post(
-        f'https://open.bigmodel.cn/api/paas/v1/model/{model}/invoke',
+        endpoint,
         headers={
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
