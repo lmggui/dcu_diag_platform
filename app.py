@@ -6,10 +6,10 @@ After-sales Fault Diagnosis Platform
 
 from flask import Flask
 from db import init_db
+from routes import register_routes
 
 app = Flask(__name__)
-
-import routes  # noqa: F401
+register_routes(app)
 
 if __name__ == '__main__':
     init_db()
