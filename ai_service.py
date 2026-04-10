@@ -16,12 +16,12 @@ def build_prompt(log_content, kb_hits):
 def get_ai_provider():
     provider = os.environ.get('AI_PROVIDER', 'qwen').strip().lower()
     if provider in ('qwen', 'qwenai'):
-        return 'qwen', os.environ.get('QWEN_API_KEY', ''), os.environ.get('QWEN_MODEL', 'qwen-plus-2.7b')
+        return 'qwen', os.environ.get('QWEN_API_KEY', ''), os.environ.get('QWEN_MODEL', 'qwen3.6-plus')
     if provider in ('zhipu', '智谱', 'zhipu'):
-        return 'zhipu', os.environ.get('ZHIPU_API_KEY', ''), os.environ.get('ZHIPU_MODEL', 'spark-3.5-mini')
+        return 'zhipu', os.environ.get('ZHIPU_API_KEY', ''), os.environ.get('ZHIPU_MODEL', 'glm-5')
     if provider in ('anthropic', 'claude'):
         return 'anthropic', os.environ.get('ANTHROPIC_API_KEY', ''), os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-4-20250514')
-    return provider, os.environ.get('QWEN_API_KEY', ''), os.environ.get('QWEN_MODEL', 'qwen-plus-2.7b')
+    return provider, os.environ.get('QWEN_API_KEY', ''), os.environ.get('QWEN_MODEL', 'qwen3.6-plus')
 
 
 def call_qwen(prompt, api_key, model):
