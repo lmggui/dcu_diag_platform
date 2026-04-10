@@ -27,7 +27,7 @@ def get_ai_provider():
 
 
 def call_qwen(prompt, api_key, model):
-    endpoint = os.environ.get('QWEN_API_BASE', 'https://api.qwen.ai/v1/chat/completions')
+    endpoint = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
     resp = requests.post(
         endpoint,
         headers={
