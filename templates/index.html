@@ -238,6 +238,10 @@
               <input id="kbKeywords" placeholder="XID 81 VM fault 显存 越界 page fault">
             </div>
             <div>
+              <label>关键信息（优先匹配）</label>
+              <input id="kbKeyInfo" placeholder="XID 81 VM fault page fault">
+            </div>
+            <div>
               <label>来源</label>
               <input id="kbSource" placeholder="如：手册、FAQ、客户案例">
             </div>
@@ -250,7 +254,7 @@
         <div class="card">
           <div class="card-title">批量导入（JSON）</div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-            上传 JSON 文件，格式为数组，每项包含 category/title/problem/solution 字段
+            上传 JSON 文件，格式为数组，每项包含 category/title/problem/solution 字段，可选 key_info/keywords/source
           </div>
           <label class="upload-zone" style="padding:20px" for="importFile">
             <input type="file" id="importFile" accept=".json" onchange="importKb(this)">
@@ -486,6 +490,7 @@ async function loadKbList() {
         <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteKb(${item.id}, event)">🗑</button>
       </div>
       <div class="kb-item-body">${item.problem.slice(0,100)}${item.problem.length>100?'...':''}</div>
+      ${item.key_info ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">关键信息：${item.key_info}</div>` : ''}
       <div style="font-size:11px;color:var(--muted);margin-top:6px">来源：${item.source || '—'} · ${item.created_at}</div>
     </div>
   `).join('');
@@ -498,6 +503,7 @@ async function addKbEntry() {
     problem: document.getElementById('kbProblem').value.trim(),
     solution: document.getElementById('kbSolution').value.trim(),
     keywords: document.getElementById('kbKeywords').value.trim(),
+    key_info: document.getElementById('kbKeyInfo').value.trim(),
     source: document.getElementById('kbSource').value.trim() || '手动录入',
   };
   if (!data.category || !data.title || !data.problem || !data.solution) {
@@ -507,7 +513,7 @@ async function addKbEntry() {
   const d = await res.json();
   if (d.ok) {
     toast('已添加', 'ok');
-    ['kbCategory','kbTitle','kbProblem','kbSolution','kbKeywords','kbSource'].forEach(id => {
+    ['kbCategory','kbTitle','kbProblem','kbSolution','kbKeywords','kbKeyInfo','kbSource'].forEach(id => {
       const el = document.getElementById(id);
       if (el.tagName === 'SELECT') el.value = ''; else el.value = '';
     });
@@ -535,7 +541,7 @@ async function importKb(input) {
 
 function downloadTemplate() {
   const template = [
-    { category:'硬件驱动', title:'示例：XID XX 错误', problem:'描述故障现象', solution:'分步骤解决方案', keywords:'关键词 空格分隔', source:'来源' }
+    { category:'硬件驱动', title:'示例：XID XX 错误', problem:'描述故障现象', solution:'分步骤解决方案', keywords:'关键词 空格分隔', key_info:'XID 81 VM fault page fault', source:'来源' }
   ];
   const a = document.createElement('a');
   a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));

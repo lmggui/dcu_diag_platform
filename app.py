@@ -9,10 +9,10 @@ from db import init_db
 from routes import register_routes
 
 app = Flask(__name__)
+init_db()
 register_routes(app)
 
 if __name__ == '__main__':
-    init_db()
     print('\n' + '='*60)
     print('  DCU 售后故障诊断平台  v1.0')
     print('  http://127.0.0.1:5000')

@@ -19,6 +19,70 @@ def _tokenize(text):
     return zh + [w.lower() for w in en]
 
 
+def _build_key_info_field(text):
+    tokens = _tokenize(text)
+    code_tokens = []
+    extra_tokens = []
+    for tok in tokens:
+        if tok.lower() in ('xid', 'sxid') or tok.isdigit():
+            code_tokens.append(tok)
+        elif tok.isascii():
+            extra_tokens.append(tok)
+    if not code_tokens and not extra_tokens:
+        return ' '.join(tokens[:8])
+    return ' '.join(code_tokens + extra_tokens[:5])
+
+
+def _normalize_for_search(text):
+    return re.sub(r'[^a-z0-9]+', ' ', text.lower())
+
+
+def _extract_code_patterns(query):
+    codes = []
+    for m in re.finditer(r'\b(xid|sxid)\s*[:]?\s*(\d+)\b', query, flags=re.I):
+        codes.append((m.group(1).lower(), m.group(2)))
+    return codes
+
+
+def _matches_key_info(query, key_info):
+    if not key_info:
+        return False
+    normalized_query = _normalize_for_search(query)
+    normalized_key_info = _normalize_for_search(key_info)
+
+    for prefix, code in _extract_code_patterns(query):
+        if f"{prefix} {code}" in normalized_key_info or f"{prefix} {code}" in normalized_query:
+            return True
+
+    for phrase in [p.strip() for p in re.split(r'[;,/]|\s{2,}', key_info) if p.strip()]:
+        phrase_norm = _normalize_for_search(phrase)
+        if len(phrase_norm) >= 4 and phrase_norm in normalized_query:
+            return True
+    return False
+
+
+def _key_info_match_score(query, key_info):
+    q_tokens = set(_tokenize(query))
+    k_tokens = set(_tokenize(key_info))
+    if not k_tokens:
+        return 0.0
+    return len(q_tokens & k_tokens) / len(k_tokens)
+
+
+def _key_info_matches(query, rows):
+    matches = []
+    for row in rows:
+        key_info = row['key_info'] if 'key_info' in row.keys() else ''
+        if not key_info:
+            key_info = _build_key_info_field(row['keywords'])
+        if _matches_key_info(query, key_info):
+            score = _key_info_match_score(query, key_info)
+            if score >= 0.6:
+                matches.append({'row': dict(row), 'score': round(score, 4)})
+    matches.sort(key=lambda x: x['score'], reverse=True)
+    return matches
+
+
 def _jaccard(a_tokens, b_tokens):
     a, b = set(a_tokens), set(b_tokens)
     if not a or not b:
@@ -35,6 +99,10 @@ def search_kb(query, category=None, top_k=5):
         c.execute('SELECT * FROM knowledge_base')
     rows = c.fetchall()
     conn.close()
+
+    direct_matches = _key_info_matches(query, rows)
+    if direct_matches:
+        return direct_matches[:top_k]
 
     q_tokens = _tokenize(query)
     scored = []
@@ -58,6 +126,7 @@ def init_db():
             problem   TEXT NOT NULL,
             solution  TEXT NOT NULL,
             keywords  TEXT DEFAULT '',
+            key_info  TEXT DEFAULT '',
             source    TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now','localtime')),
             updated_at TEXT DEFAULT (datetime('now','localtime'))
@@ -77,6 +146,12 @@ def init_db():
     c.execute('SELECT COUNT(*) as n FROM knowledge_base')
     if c.fetchone()['n'] == 0:
         _seed_kb(c)
+        conn.commit()
+    # Ensure existing DB schema includes key_info column for KB entries
+    c.execute("PRAGMA table_info(knowledge_base)")
+    columns = [row[1] for row in c.fetchall()]
+    if 'key_info' not in columns:
+        c.execute('ALTER TABLE knowledge_base ADD COLUMN key_info TEXT DEFAULT ""')
         conn.commit()
     conn.close()
 
@@ -238,5 +313,6 @@ def _seed_kb(c):
          '1. 确认数据预处理与训练时保持一致\n2. 检查量化配置（fp16/bf16/int8）是否匹配\n3. 验证模型权重文件完整性（md5/sha256）\n4. 用小批量 CPU 推理对比结果',
          '精度 异常 量化 fp16 bf16 int8 模型 权重','通用模型部署'),
     ]
-    sql = 'INSERT INTO knowledge_base(category,title,problem,solution,keywords,source) VALUES(?,?,?,?,?,?)'
+    entries = [(*item, _build_key_info_field(item[4])) for item in entries]
+    sql = 'INSERT INTO knowledge_base(category,title,problem,solution,keywords,key_info,source) VALUES(?,?,?,?,?,?,?)'
     c.executemany(sql, entries)

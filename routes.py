@@ -89,7 +89,7 @@ def register_routes(app):
         if not q and cat == 'all':
             conn = get_db()
             rows = conn.execute(
-                'SELECT id,category,title,problem,solution,keywords,source,created_at FROM knowledge_base ORDER BY id DESC'
+                'SELECT id,category,title,problem,solution,keywords,key_info,source,created_at FROM knowledge_base ORDER BY id DESC'
             ).fetchall()
             conn.close()
             return jsonify([dict(r) for r in rows])
@@ -106,9 +106,9 @@ def register_routes(app):
                 return jsonify({'error': f'字段 {f} 不能为空'}), 400
         conn = get_db()
         conn.execute(
-            'INSERT INTO knowledge_base(category,title,problem,solution,keywords,source) VALUES(?,?,?,?,?,?)',
+            'INSERT INTO knowledge_base(category,title,problem,solution,keywords,key_info,source) VALUES(?,?,?,?,?,?,?)',
             (data['category'], data['title'], data['problem'], data['solution'],
-             data.get('keywords',''), data.get('source','手动录入'))
+             data.get('keywords',''), data.get('key_info',''), data.get('source','手动录入'))
         )
         conn.commit()
         conn.close()
@@ -141,9 +141,9 @@ def register_routes(app):
                 if not all(item.get(k) for k in ['category','title','problem','solution']):
                     continue
                 conn.execute(
-                    'INSERT INTO knowledge_base(category,title,problem,solution,keywords,source) VALUES(?,?,?,?,?,?)',
+                    'INSERT INTO knowledge_base(category,title,problem,solution,keywords,key_info,source) VALUES(?,?,?,?,?,?,?)',
                     (item['category'],item['title'],item['problem'],item['solution'],
-                     item.get('keywords',''),item.get('source','批量导入'))
+                     item.get('keywords',''), item.get('key_info',''), item.get('source','批量导入'))
                 )
                 count += 1
             conn.commit()
