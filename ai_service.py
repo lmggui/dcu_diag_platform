@@ -31,20 +31,31 @@ def get_ai_provider():
 def call_qwen(prompt, api_key, model):
     endpoint_base = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
     endpoint = endpoint_base.rstrip('/') + '/chat/completions'
-    resp = requests.post(
-        endpoint,
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-        },
-        json={
-            'model': model,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'max_tokens': 1500,
-            'temperature': 0.1,
-        },
-        timeout=60
-    )
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
+    payload = {
+        'model': model,
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': 1500,
+        'temperature': 0.1,
+    }
+
+    resp = None
+    for attempt in range(2):
+        try:
+            resp = requests.post(endpoint, headers=headers, json=payload, timeout=(10, 120))
+            break
+        except requests.exceptions.ReadTimeout as e:
+            if attempt == 0:
+                continue
+            return f'AI 接口超时: {e}', 'AI_ERR'
+        except Exception as e:
+            return f'AI 调用异常: {e}', 'AI_ERR'
+
+    if resp is None:
+        return 'AI 调用失败，无法连接到 QWEN 接口', 'AI_ERR'
     if resp.status_code != 200:
         return f'AI 接口错误 {resp.status_code}: {resp.text[:200]}', 'AI_ERR'
     body = resp.json()
