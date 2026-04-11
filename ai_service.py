@@ -18,16 +18,19 @@ def get_ai_provider():
     if provider in ('qwen', 'qwenai'):
         qwen_key = os.environ.get('QWEN_API_KEY') or os.environ.get('QWEN_AP_KEY', '')
         return 'qwen', qwen_key, os.environ.get('QWEN_MODEL', 'qwen3.6-plus')
-    if provider in ('zhipu', '智谱', 'zhipu'):
+    if provider in ('zhipu', '智谱'):
         return 'zhipu', os.environ.get('ZHIPU_API_KEY', ''), os.environ.get('ZHIPU_MODEL', 'glm-5')
     if provider in ('anthropic', 'claude'):
         return 'anthropic', os.environ.get('ANTHROPIC_API_KEY', ''), os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-4-20250514')
     qwen_key = os.environ.get('QWEN_API_KEY') or os.environ.get('QWEN_AP_KEY', '')
+    if qwen_key:
+        return 'qwen', qwen_key, os.environ.get('QWEN_MODEL', 'qwen3.6-plus')
     return provider, qwen_key, os.environ.get('QWEN_MODEL', 'qwen3.6-plus')
 
 
 def call_qwen(prompt, api_key, model):
-    endpoint = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+    endpoint_base = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+    endpoint = endpoint_base.rstrip('/') + '/chat/completions'
     resp = requests.post(
         endpoint,
         headers={
