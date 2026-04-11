@@ -179,7 +179,8 @@
             分析结果
             <div id="resultBadge" class="badge badge-kb"></div>
           </div>
-          <div id="resultScore" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <div id="resultScore" style="font-size:12px;color:var(--muted);margin-bottom:4px"></div>
+          <div id="resultMeta" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
           <div class="result-box" id="resultBox"></div>
 
           <div id="kbHitsSection" style="margin-top:14px;display:none">
@@ -246,7 +247,8 @@
               <input id="kbSource" placeholder="如：手册、FAQ、客户案例">
             </div>
             <div style="display:flex;gap:10px">
-              <button class="btn btn-success" onclick="addKbEntry()" style="flex:1">✅ 添加条目</button>
+              <button class="btn btn-success" id="kbSaveBtn" onclick="addKbEntry()" style="flex:1">✅ 添加条目</button>
+              <button class="btn btn-ghost" id="kbCancelEditBtn" onclick="cancelEditKb()" style="display:none">✖ 取消</button>
             </div>
           </div>
         </div>
@@ -437,6 +439,7 @@ async function doAnalyze() {
     else { badge.textContent = '📋 知识库参考'; badge.className = 'badge badge-warn'; }
 
     document.getElementById('resultScore').textContent = `知识库相关度：${(d.score * 100).toFixed(1)}%`;
+    document.getElementById('resultMeta').textContent = d.matched_key_info ? `匹配方式：关键信息优先匹配；命中内容：${d.matched_key_info_content}` : '';
 
     const hitsEl = document.getElementById('kbHitsSection');
     const hitsList = document.getElementById('kbHitsList');
@@ -475,6 +478,8 @@ async function loadKbList() {
 
   const listEl = document.getElementById('kbList');
   const totalEl = document.getElementById('kbTotal');
+  listEl.innerHTML = '';
+  window.kbItems = items;
   totalEl.textContent = `共 ${items.length} 条`;
 
   if (!items.length) {
@@ -487,13 +492,45 @@ async function loadKbList() {
       <div class="kb-item-header">
         <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:var(--accent)">${item.category}</span>
         <span class="kb-item-title">${item.title}</span>
-        <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteKb(${item.id}, event)">🗑</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="startEditKb(${item.id}, event)">✏️ 编辑</button>
+          <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteKb(${item.id}, event)">🗑</button>
+        </div>
       </div>
       <div class="kb-item-body">${item.problem.slice(0,100)}${item.problem.length>100?'...':''}</div>
       ${item.key_info ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">关键信息：${item.key_info}</div>` : ''}
       <div style="font-size:11px;color:var(--muted);margin-top:6px">来源：${item.source || '—'} · ${item.created_at}</div>
     </div>
   `).join('');
+}
+
+let editingKbId = null;
+
+function startEditKb(id, event) {
+  event.stopPropagation();
+  const item = window.kbItems?.find(i => i.id === id);
+  if (!item) return toast('未找到条目', 'err');
+  editingKbId = id;
+  document.getElementById('kbCategory').value = item.category;
+  document.getElementById('kbTitle').value = item.title;
+  document.getElementById('kbProblem').value = item.problem;
+  document.getElementById('kbSolution').value = item.solution;
+  document.getElementById('kbKeywords').value = item.key_info ? item.key_info : item.keywords;
+  document.getElementById('kbKeyInfo').value = item.key_info || '';
+  document.getElementById('kbSource').value = item.source || '';
+  document.getElementById('kbSaveBtn').textContent = '💾 保存修改';
+  document.getElementById('kbCancelEditBtn').style.display = 'inline-flex';
+  toast('已进入编辑模式，请修改后保存。', 'info');
+}
+
+function cancelEditKb() {
+  editingKbId = null;
+  ['kbCategory','kbTitle','kbProblem','kbSolution','kbKeywords','kbKeyInfo','kbSource'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el.tagName === 'SELECT') el.value = ''; else el.value = '';
+  });
+  document.getElementById('kbSaveBtn').textContent = '✅ 添加条目';
+  document.getElementById('kbCancelEditBtn').style.display = 'none';
 }
 
 async function addKbEntry() {
@@ -509,14 +546,14 @@ async function addKbEntry() {
   if (!data.category || !data.title || !data.problem || !data.solution) {
     toast('请填写必填项（分类、标题、问题、方案）', 'err'); return;
   }
-  const res = await fetch('/api/kb', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+
+  const url = editingKbId ? `/api/kb/${editingKbId}` : '/api/kb';
+  const method = editingKbId ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
   const d = await res.json();
   if (d.ok) {
-    toast('已添加', 'ok');
-    ['kbCategory','kbTitle','kbProblem','kbSolution','kbKeywords','kbKeyInfo','kbSource'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el.tagName === 'SELECT') el.value = ''; else el.value = '';
-    });
+    toast(editingKbId ? '已保存修改' : '已添加', 'ok');
+    cancelEditKb();
     loadKbList(); loadStats();
   } else { toast(d.error, 'err'); }
 }

@@ -78,7 +78,12 @@ def _key_info_matches(query, rows):
         if _matches_key_info(query, key_info):
             score = _key_info_match_score(query, key_info)
             if score >= 0.6:
-                matches.append({'row': dict(row), 'score': round(score, 4)})
+                matches.append({
+                    'row': dict(row),
+                    'score': round(score, 4),
+                    'matched_key_info': True,
+                    'matched_key_info_content': key_info,
+                })
     matches.sort(key=lambda x: x['score'], reverse=True)
     return matches
 

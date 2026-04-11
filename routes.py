@@ -74,6 +74,8 @@ def register_routes(app):
                 'match_type': match_type,
                 'score': top_score,
                 'result': result,
+                'matched_key_info': bool(hits and hits[0].get('matched_key_info')),
+                'matched_key_info_content': hits[0].get('matched_key_info_content') if hits else '',
                 'kb_hits': [{'id': h['row']['id'], 'title': h['row']['title'],
                              'category': h['row']['category'], 'score': h['score']}
                             for h in hits[:3] if h['score'] > 0]
@@ -111,6 +113,27 @@ def register_routes(app):
              data.get('keywords',''), data.get('key_info',''), data.get('source','手动录入'))
         )
         conn.commit()
+        conn.close()
+        return jsonify({'ok': True})
+
+
+    @app.route('/api/kb/<int:kid>', methods=['PUT'])
+    def kb_update(kid):
+        data = request.get_json(silent=True) or {}
+        required = ['category', 'title', 'problem', 'solution']
+        for f in required:
+            if not data.get(f):
+                return jsonify({'error': f'字段 {f} 不能为空'}), 400
+        conn = get_db()
+        cur = conn.execute(
+            "UPDATE knowledge_base SET category=?, title=?, problem=?, solution=?, keywords=?, key_info=?, source=?, updated_at=(datetime('now','localtime')) WHERE id=?",
+            (data['category'], data['title'], data['problem'], data['solution'],
+             data.get('keywords',''), data.get('key_info',''), data.get('source','手动录入'), kid)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            conn.close()
+            return jsonify({'error': '未找到该条目'}), 404
         conn.close()
         return jsonify({'ok': True})
 
