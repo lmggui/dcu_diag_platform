@@ -75,6 +75,7 @@
   .badge-kb{background:rgba(34,197,94,.15);color:var(--success)}
   .badge-ai{background:rgba(99,102,241,.15);color:#818cf8}
   .badge-warn{background:rgba(245,158,11,.15);color:var(--warn)}
+  .badge-success{background:rgba(34,197,94,.15);color:var(--success)}
 
   /* KB list */
   .kb-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;transition:.2s}
@@ -140,6 +141,7 @@
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('analyze')">📋 日志上传 & 分析</div>
+    <div class="tab" onclick="switchTab('device')">📦 设备识别</div>
     <div class="tab" onclick="switchTab('kb')">📚 知识库管理</div>
     <div class="tab" onclick="switchTab('search')">🔍 知识库搜索</div>
     <div class="tab" onclick="switchTab('history')">🕐 分析历史</div>
@@ -165,27 +167,30 @@
           <textarea id="logContent" placeholder="将 dmesg / 系统日志 / 错误信息粘贴到此处...\n\n示例：\n[12345.678] hycu 0000:03:00.0: hycu:(serial:ABC123)XID:81, pasid:42, pid:1234, tgid:1234, sub block: 0, info:src_id:0 ring:241 page_fault from"></textarea>
         </div>
 
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-primary" id="analyzeBtn" onclick="doAnalyze()" style="flex:1">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="doAnalyze()" style="flex:1;min-width:160px">
             <span>🔎 开始分析</span>
+          </button>
+          <button class="btn btn-success" id="deviceBtn" onclick="doExtractDevices(this)" style="flex:1;min-width:160px">
+            <span>📦 识别设备</span>
           </button>
           <button class="btn btn-ghost" onclick="clearInput()">清空</button>
         </div>
       </div>
 
       <div>
-        <div class="card" id="resultCard" style="display:none">
+        <div class="card result-card" id="resultCard" style="display:none">
           <div class="card-title" style="justify-content:space-between">
             分析结果
-            <div id="resultBadge" class="badge badge-kb"></div>
+            <div id="resultBadge" class="badge badge-kb result-badge"></div>
           </div>
-          <div id="resultScore" style="font-size:12px;color:var(--muted);margin-bottom:4px"></div>
-          <div id="resultMeta" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <div id="resultScore" class="result-score" style="font-size:12px;color:var(--muted);margin-bottom:4px"></div>
+          <div id="resultMeta" class="result-meta" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
           <div class="result-box" id="resultBox"></div>
 
-          <div id="deviceInfoSection" style="margin-top:14px;display:none">
+          <div id="deviceInfoSection" class="device-info-section" style="margin-top:14px;display:none">
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px">📦 识别到设备</div>
-            <div id="deviceInfoList" style="display:grid;gap:6px"></div>
+            <div id="deviceInfoList" class="device-info-list" style="display:grid;gap:6px"></div>
           </div>
 
           <div id="kbHitsSection" style="margin-top:14px;display:none">
@@ -205,6 +210,57 @@
               <div style="color:var(--accent2);margin:10px 0 6px">🤖 AI 智能分析</div>
               <div style="color:var(--muted)">相关度不足时调用 AI 大模型进行深度分析<br>需设置环境变量 ANTHROPIC_API_KEY</div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-device" style="display:none">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <div class="card-title">设备识别</div>
+          <label class="upload-zone" id="deviceDropZone" for="deviceFileInput">
+            <input type="file" id="deviceFileInput" accept=".log,.txt,.json,.dmesg" onchange="handleFileSelect(this,'deviceLogContent','deviceFileInfo')">
+            <div class="upload-icon">📂</div>
+            <div style="font-weight:600;margin-bottom:4px">拖拽或点击上传</div>
+            <div class="upload-text">支持 .log .txt .dmesg .json 格式</div>
+          </label>
+          <div id="deviceFileInfo" class="file-info" style="margin-top:10px;font-size:12px;color:var(--success);display:none"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">日志内容</div>
+          <textarea id="deviceLogContent" placeholder="将 dmesg / 系统日志 / 错误信息粘贴到此处..."></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-success" onclick="doExtractDevices(this)" style="flex:1">📦 识别设备</button>
+          <button class="btn btn-ghost" onclick="clearDeviceInput()">清空</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card result-card" id="deviceResultCard" style="display:none">
+          <div class="card-title" style="justify-content:space-between">
+            设备识别结果
+            <div id="deviceResultBadge" class="badge badge-success result-badge"></div>
+          </div>
+          <div id="deviceResultScore" class="result-score" style="font-size:12px;color:var(--muted);margin-bottom:4px"></div>
+          <div id="deviceResultMeta" class="result-meta" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+          <div class="result-box" id="deviceResultBox"></div>
+          <div class="device-info-section" style="margin-top:14px;display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">📦 识别到设备</div>
+            <div class="device-info-list" style="display:grid;gap:6px"></div>
+          </div>
+        </div>
+
+        <div class="card" id="deviceEmptyState">
+          <div style="text-align:center;padding:40px;color:var(--muted)">
+            <div style="font-size:48px;margin-bottom:12px">📦</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:8px">设备识别</div>
+            <div style="font-size:13px">上传 dmesg 或粘贴日志内容，系统会从日志中提取子设备 ID 并匹配设备名称。</div>
           </div>
         </div>
       </div>
@@ -349,7 +405,7 @@ let selectedFile = null;
 // ─── Tab switching ───────────────────────────────────────────────────────
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const panels = ['analyze','kb','search','history'];
+    const panels = ['analyze','device','kb','search','history'];
     t.classList.toggle('active', panels[i] === name);
   });
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -377,13 +433,14 @@ async function loadStats() {
 loadStats();
 
 // ─── File handling ─────────────────────────────────────────────
-function handleFileSelect(input) {
+function handleFileSelect(input, targetId='logContent', infoId='fileInfo') {
   if (!input.files[0]) return;
   selectedFile = input.files[0];
-  document.getElementById('fileInfo').style.display = 'block';
-  document.getElementById('fileInfo').textContent = `✅ 已选择：${selectedFile.name} (${(selectedFile.size/1024).toFixed(1)} KB)`;
+  const info = document.getElementById(infoId);
+  info.style.display = 'block';
+  info.textContent = `✅ 已选择：${selectedFile.name} (${(selectedFile.size/1024).toFixed(1)} KB)`;
   const reader = new FileReader();
-  reader.onload = e => { document.getElementById('logContent').value = e.target.result.slice(0, 3000); };
+  reader.onload = e => { document.getElementById(targetId).value = e.target.result.slice(0, 3000); };
   reader.readAsText(selectedFile);
 }
 
@@ -396,13 +453,120 @@ dz.addEventListener('drop', e => {
   if (f) { selectedFile = f; document.getElementById('fileInput').files; handleFileSelect({files:[f]}); }
 });
 
-function clearInput() {
-  selectedFile = null;
-  document.getElementById('fileInput').value = '';
-  document.getElementById('logContent').value = '';
-  document.getElementById('fileInfo').style.display = 'none';
-  document.getElementById('resultCard').style.display = 'none';
-  document.getElementById('emptyState').style.display = 'block';
+async function doExtractDevices(btnEl) {
+  const panel = btnEl.closest('.panel');
+  const content = panel.querySelector('textarea').value.trim();
+  if (!content && !selectedFile) { toast('请上传日志文件或粘贴日志内容','err'); return; }
+
+  const btn = btnEl || document.getElementById('deviceBtn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<div class="spinner"></div> 识别中...';
+  btn.disabled = true;
+
+  try {
+    let res;
+    const fd = new FormData();
+    if (panel.querySelector('input[type=file]').files[0]) {
+      fd.append('file', panel.querySelector('input[type=file]').files[0]);
+    }
+    fd.append('content', content);
+    res = await fetch('/api/device-info', { method:'POST', body:fd });
+
+    const d = await res.json();
+    if (d.error) { toast(d.error, 'err'); return; }
+
+    panel.querySelector('.result-card').style.display = 'block';
+    panel.querySelector('.result-box').textContent = d.devices.length ? d.devices.map(item => `${item.sub_device_id} → ${item.name}`).join('\n') : '未识别到子设备 ID';
+    panel.querySelector('.result-badge').textContent = '📦 设备识别';
+    panel.querySelector('.result-score').textContent = `识别到设备数量：${d.count}`;
+    panel.querySelector('.result-meta').textContent = '';
+    panel.querySelector('.result-box').className = 'result-box';
+
+    const deviceEl = panel.querySelector('.device-info-section');
+    const deviceList = panel.querySelector('.device-info-list');
+    if (d.devices && d.devices.length) {
+      deviceEl.style.display = 'block';
+      deviceList.innerHTML = d.devices.map(item =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px">
+          <span style="font-size:12px;color:var(--accent)">${item.sub_device_id}</span>
+          <span style="font-size:13px;flex:1">${item.name}</span>
+          <span style="font-size:11px;color:${item.known ? '#22c55e' : '#f59e0b'}">${item.known ? '已识别' : '未知设备'}</span>
+        </div>`
+      ).join('');
+    } else {
+      deviceEl.style.display = 'none';
+      deviceList.innerHTML = '';
+    }
+
+    panel.querySelector('#deviceEmptyState')?.style?.setProperty('display', 'none');
+    toast('设备识别完成', 'ok');
+  } catch(e) {
+    toast('请求失败: ' + e.message, 'err');
+  } finally {
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
+}
+
+// ─── Analyze ─────────────────────────────────────────────────────
+async function doAnalyze() {
+  if (!content && !selectedFile) { toast('请上传日志文件或粘贴日志内容','err'); return; }
+
+  const btn = document.getElementById('deviceBtn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<div class="spinner"></div> 识别中...';
+  btn.disabled = true;
+
+  try {
+    let res;
+    if (selectedFile) {
+      const fd = new FormData();
+      fd.append('file', selectedFile);
+      if (content) fd.append('content', content);
+      res = await fetch('/api/device-info', { method:'POST', body:fd });
+    } else {
+      const fd = new FormData();
+      fd.append('content', content);
+      res = await fetch('/api/device-info', { method:'POST', body:fd });
+    }
+
+    const d = await res.json();
+    if (d.error) { toast(d.error, 'err'); return; }
+
+    document.getElementById('emptyState').style.display = 'none';
+    const rc = document.getElementById('resultCard');
+    rc.style.display = 'block';
+    const rb = document.getElementById('resultBox');
+    rb.textContent = d.devices.length ? d.devices.map(item => `${item.sub_device_id} → ${item.name}`).join('\n') : '未识别到子设备 ID';
+    rb.className = 'result-box';
+    document.getElementById('resultBadge').textContent = '📦 设备识别';
+    document.getElementById('resultBadge').className = 'badge badge-success';
+    document.getElementById('resultScore').textContent = `识别到设备数量：${d.count}`;
+    document.getElementById('resultMeta').textContent = '';
+
+    const deviceEl = document.getElementById('deviceInfoSection');
+    const deviceList = document.getElementById('deviceInfoList');
+    if (d.devices && d.devices.length) {
+      deviceEl.style.display = 'block';
+      deviceList.innerHTML = d.devices.map(item =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px">
+          <span style="font-size:12px;color:var(--accent)">${item.sub_device_id}</span>
+          <span style="font-size:13px;flex:1">${item.name}</span>
+          <span style="font-size:11px;color:${item.known ? '#22c55e' : '#f59e0b'}">${item.known ? '已识别' : '未知设备'}</span>
+        </div>`
+      ).join('');
+    } else {
+      deviceEl.style.display = 'none';
+      deviceList.innerHTML = '';
+    }
+
+    toast('设备识别完成', 'ok');
+  } catch(e) {
+    toast('请求失败: ' + e.message, 'err');
+  } finally {
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
 }
 
 // ─── Analyze ─────────────────────────────────────────────────────
