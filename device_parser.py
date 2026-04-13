@@ -20,12 +20,13 @@ def extract_sub_device_ids(text):
 def map_devices_from_text(text):
     device_map = _load_device_map()
     sub_ids = extract_sub_device_ids(text)
-    result = []
-    for sub_id in sub_ids:
-        device_name = device_map.get(sub_id)
-        result.append({
-            'sub_device_id': sub_id,
-            'name': device_name if device_name else '未知设备',
-            'known': sub_id in device_map
-        })
-    return result
+    matched = [sub_id for sub_id in sub_ids if sub_id in device_map]
+    if not matched:
+        return []
+    # 只保留第一个已知设备匹配，且已经去重
+    sub_id = matched[0]
+    return [{
+        'sub_device_id': sub_id,
+        'name': device_map[sub_id],
+        'known': True
+    }]

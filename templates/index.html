@@ -465,7 +465,10 @@ dz.addEventListener('drop', e => {
 async function doExtractDevices(btnEl) {
   const panel = btnEl.closest('.panel');
   const content = panel.querySelector('textarea').value.trim();
-  if (!content && !selectedFile) { toast('请上传日志文件或粘贴日志内容','err'); return; }
+  const fileInput = panel.querySelector('input[type=file]');
+  const selectedPanelFile = fileInput?.files?.[0];
+  const file = selectedPanelFile || selectedFile;
+  if (!content && !file) { toast('请上传日志文件或粘贴日志内容','err'); return; }
 
   const btn = btnEl || document.getElementById('deviceBtn');
   const original = btn.innerHTML;
@@ -473,13 +476,12 @@ async function doExtractDevices(btnEl) {
   btn.disabled = true;
 
   try {
-    let res;
     const fd = new FormData();
-    if (panel.querySelector('input[type=file]').files[0]) {
-      fd.append('file', panel.querySelector('input[type=file]').files[0]);
+    if (file) {
+      fd.append('file', file);
     }
     fd.append('content', content);
-    res = await fetch('/api/device-info', { method:'POST', body:fd });
+    const res = await fetch('/api/device-info', { method:'POST', body:fd });
 
     const d = await res.json();
     if (d.error) { toast(d.error, 'err'); return; }
@@ -517,6 +519,7 @@ async function doExtractDevices(btnEl) {
   }
 }
 
+// ─── Log Search ─────────────────────────────────────────────────────
 async function doLogSearch() {
   const content = document.getElementById('logContent').value.trim();
   const query = document.getElementById('searchKeywords').value.trim();
@@ -564,68 +567,6 @@ async function doLogSearch() {
   }
 }
 
-// ─── Analyze ─────────────────────────────────────────────────────
-async function doAnalyze() {
-  if (!content && !selectedFile) { toast('请上传日志文件或粘贴日志内容','err'); return; }
-
-  const btn = document.getElementById('deviceBtn');
-  const original = btn.innerHTML;
-  btn.innerHTML = '<div class="spinner"></div> 识别中...';
-  btn.disabled = true;
-
-  try {
-    let res;
-    if (selectedFile) {
-      const fd = new FormData();
-      fd.append('file', selectedFile);
-      if (content) fd.append('content', content);
-      res = await fetch('/api/device-info', { method:'POST', body:fd });
-    } else {
-      const fd = new FormData();
-      fd.append('content', content);
-      res = await fetch('/api/device-info', { method:'POST', body:fd });
-    }
-
-    const d = await res.json();
-    if (d.error) { toast(d.error, 'err'); return; }
-
-    document.getElementById('emptyState').style.display = 'none';
-    const rc = document.getElementById('resultCard');
-    rc.style.display = 'block';
-    const rb = document.getElementById('resultBox');
-    rb.textContent = d.devices.length ? d.devices.map(item => `${item.sub_device_id} → ${item.name}`).join('\n') : '未识别到子设备 ID';
-    rb.className = 'result-box';
-    document.getElementById('resultBadge').textContent = '📦 设备识别';
-    document.getElementById('resultBadge').className = 'badge badge-success';
-    document.getElementById('resultScore').textContent = `识别到设备数量：${d.count}`;
-    document.getElementById('resultMeta').textContent = '';
-
-    const deviceEl = document.getElementById('deviceInfoSection');
-    const deviceList = document.getElementById('deviceInfoList');
-    if (d.devices && d.devices.length) {
-      deviceEl.style.display = 'block';
-      deviceList.innerHTML = d.devices.map(item =>
-        `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px">
-          <span style="font-size:12px;color:var(--accent)">${item.sub_device_id}</span>
-          <span style="font-size:13px;flex:1">${item.name}</span>
-          <span style="font-size:11px;color:${item.known ? '#22c55e' : '#f59e0b'}">${item.known ? '已识别' : '未知设备'}</span>
-        </div>`
-      ).join('');
-    } else {
-      deviceEl.style.display = 'none';
-      deviceList.innerHTML = '';
-    }
-
-    toast('设备识别完成', 'ok');
-  } catch(e) {
-    toast('请求失败: ' + e.message, 'err');
-  } finally {
-    btn.innerHTML = original;
-    btn.disabled = false;
-  }
-}
-
-// ─── Analyze ─────────────────────────────────────────────────────
 async function doAnalyze() {
   const content = document.getElementById('logContent').value.trim();
   if (!content && !selectedFile) { toast('请上传日志文件或粘贴日志内容','err'); return; }
