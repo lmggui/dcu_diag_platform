@@ -1,10 +1,11 @@
-﻿import json
+﻿import io
+import json
 import traceback
 from flask import jsonify, render_template, request
 
 from ai_service import call_ai
 from db import KB_THRESHOLD, get_db, search_kb
-from device_parser import map_devices_from_text
+from device_parser import map_devices_from_stream, map_devices_from_text
 
 
 def register_routes(app):
@@ -92,17 +93,16 @@ def register_routes(app):
         try:
             if 'file' in request.files and request.files['file'].filename:
                 f = request.files['file']
-                content = f.read().decode('utf-8', errors='replace')
+                devices = map_devices_from_stream(f.stream)
             else:
                 content = (request.form.get('content') or '').strip()
                 if not content:
                     data = request.get_json(silent=True) or {}
                     content = data.get('content', '').strip()
+                if not content:
+                    return jsonify({'error': '日志内容为空'}), 400
+                devices = map_devices_from_text(content)
 
-            if not content:
-                return jsonify({'error': '日志内容为空'}), 400
-
-            devices = map_devices_from_text(content)
             return jsonify({'devices': devices, 'count': len(devices)})
         except Exception:
             return jsonify({'error': traceback.format_exc()}), 500
@@ -111,22 +111,10 @@ def register_routes(app):
     @app.route('/api/log-search', methods=['POST'])
     def log_search():
         try:
-            if 'file' in request.files and request.files['file'].filename:
-                f = request.files['file']
-                content = f.read().decode('utf-8', errors='replace')
-            else:
-                content = (request.form.get('content') or '').strip()
-                if not content:
-                    data = request.get_json(silent=True) or {}
-                    content = data.get('content', '').strip()
-
             query = (request.form.get('query') or '').strip()
             if not query:
                 data = request.get_json(silent=True) or {}
                 query = data.get('query', '').strip()
-
-            if not content:
-                return jsonify({'error': '日志内容为空'}), 400
             if not query:
                 return jsonify({'error': '关键字不能为空'}), 400
 
@@ -135,10 +123,24 @@ def register_routes(app):
                 return jsonify({'error': '关键字不能为空'}), 400
 
             lines = []
-            for idx, line in enumerate(content.splitlines(), start=1):
-                text = line.lower()
-                if all(term in text for term in terms):
-                    lines.append({'line': idx, 'text': line})
+            if 'file' in request.files and request.files['file'].filename:
+                f = request.files['file']
+                text_stream = io.TextIOWrapper(f.stream, encoding='utf-8', errors='replace')
+                for idx, line in enumerate(text_stream, start=1):
+                    text = line.lower()
+                    if all(term in text for term in terms):
+                        lines.append({'line': idx, 'text': line.rstrip('\n')})
+            else:
+                content = (request.form.get('content') or '').strip()
+                if not content:
+                    data = request.get_json(silent=True) or {}
+                    content = data.get('content', '').strip()
+                if not content:
+                    return jsonify({'error': '日志内容为空'}), 400
+                for idx, line in enumerate(content.splitlines(), start=1):
+                    text = line.lower()
+                    if all(term in text for term in terms):
+                        lines.append({'line': idx, 'text': line})
 
             return jsonify({'query': query, 'count': len(lines), 'matches': lines})
         except Exception:

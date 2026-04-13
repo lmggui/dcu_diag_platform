@@ -4,11 +4,19 @@ DCU 售后故障诊断平台  v1.0
 After-sales Fault Diagnosis Platform
 """
 
-from flask import Flask
+from flask import Flask, jsonify, request
+from werkzeug.exceptions import RequestEntityTooLarge
 from db import init_db
 from routes import register_routes
 
 app = Flask(__name__)
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_large_file(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': '上传请求过大，服务器无法处理该文件。请尝试分片上传或直接粘贴日志内容。'}), 413
+    return '上传请求过大，服务器无法处理该文件。请尝试分片上传或直接粘贴日志内容。', 413
+
 init_db()
 register_routes(app)
 
