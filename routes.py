@@ -125,8 +125,11 @@ def register_routes(app):
             lines = []
             if 'file' in request.files and request.files['file'].filename:
                 f = request.files['file']
-                text_stream = io.TextIOWrapper(f.stream, encoding='utf-8', errors='replace')
-                for idx, line in enumerate(text_stream, start=1):
+                for idx, raw_line in enumerate(f.stream, start=1):
+                    if isinstance(raw_line, bytes):
+                        line = raw_line.decode('utf-8', errors='replace')
+                    else:
+                        line = raw_line
                     text = line.lower()
                     if all(term in text for term in terms):
                         lines.append({'line': idx, 'text': line.rstrip('\n')})

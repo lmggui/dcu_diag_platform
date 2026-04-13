@@ -20,8 +20,11 @@ def extract_sub_device_ids(text):
 
 def extract_sub_device_ids_from_stream(stream):
     sub_ids = set()
-    text_stream = io.TextIOWrapper(stream, encoding='utf-8', errors='replace')
-    for line in text_stream:
+    for raw_line in stream:
+        if isinstance(raw_line, bytes):
+            line = raw_line.decode('utf-8', errors='replace')
+        else:
+            line = raw_line
         for match in _SUBDEVICE_PATTERN.finditer(line):
             sub_ids.add(match.group(1).lower())
     return sorted(sub_ids)
