@@ -4,6 +4,7 @@ from flask import jsonify, render_template, request
 
 from ai_service import call_ai
 from db import KB_THRESHOLD, get_db, search_kb
+from device_parser import map_devices_from_text
 
 
 def register_routes(app):
@@ -28,6 +29,7 @@ def register_routes(app):
             if not content:
                 return jsonify({'error': '日志内容为空'}), 400
 
+            devices = map_devices_from_text(content)
             hits = search_kb(content, top_k=5)
             top_score = hits[0]['score'] if hits else 0
 
@@ -78,8 +80,30 @@ def register_routes(app):
                 'matched_key_info_content': hits[0].get('matched_key_info_content') if hits else '',
                 'kb_hits': [{'id': h['row']['id'], 'title': h['row']['title'],
                              'category': h['row']['category'], 'score': h['score']}
-                            for h in hits[:3] if h['score'] > 0]
+                            for h in hits[:3] if h['score'] > 0],
+                'devices': devices
             })
+        except Exception:
+            return jsonify({'error': traceback.format_exc()}), 500
+
+
+    @app.route('/api/device-info', methods=['POST'])
+    def device_info():
+        try:
+            if 'file' in request.files and request.files['file'].filename:
+                f = request.files['file']
+                content = f.read().decode('utf-8', errors='replace')
+            else:
+                content = (request.form.get('content') or '').strip()
+                if not content:
+                    data = request.get_json(silent=True) or {}
+                    content = data.get('content', '').strip()
+
+            if not content:
+                return jsonify({'error': '日志内容为空'}), 400
+
+            devices = map_devices_from_text(content)
+            return jsonify({'devices': devices, 'count': len(devices)})
         except Exception:
             return jsonify({'error': traceback.format_exc()}), 500
 

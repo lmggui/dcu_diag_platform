@@ -183,6 +183,11 @@
           <div id="resultMeta" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
           <div class="result-box" id="resultBox"></div>
 
+          <div id="deviceInfoSection" style="margin-top:14px;display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">📦 识别到设备</div>
+            <div id="deviceInfoList" style="display:grid;gap:6px"></div>
+          </div>
+
           <div id="kbHitsSection" style="margin-top:14px;display:none">
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px">📎 相关知识库条目</div>
             <div id="kbHitsList"></div>
@@ -440,6 +445,22 @@ async function doAnalyze() {
 
     document.getElementById('resultScore').textContent = `知识库相关度：${(d.score * 100).toFixed(1)}%`;
     document.getElementById('resultMeta').textContent = d.matched_key_info ? `匹配方式：关键信息优先匹配；命中内容：${d.matched_key_info_content}` : '';
+
+    const deviceEl = document.getElementById('deviceInfoSection');
+    const deviceList = document.getElementById('deviceInfoList');
+    if (d.devices && d.devices.length) {
+      deviceEl.style.display = 'block';
+      deviceList.innerHTML = d.devices.map(item =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px">
+          <span style="font-size:12px;color:var(--accent)">${item.sub_device_id}</span>
+          <span style="font-size:13px;flex:1">${item.name}</span>
+          <span style="font-size:11px;color:${item.known ? '#22c55e' : '#f59e0b'}">${item.known ? '已识别' : '未知设备'}</span>
+        </div>`
+      ).join('');
+    } else {
+      deviceEl.style.display = 'none';
+      deviceList.innerHTML = '';
+    }
 
     const hitsEl = document.getElementById('kbHitsSection');
     const hitsList = document.getElementById('kbHitsList');

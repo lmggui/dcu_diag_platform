@@ -1,0 +1,19 @@
+{
+  "devices": [
+    {"name": "Z100L", "sub_device_id": "1d94:55b7"},
+    {"name": "Z100", "sub_device_id": "1d94:54b7"},
+    {"name": "K100", "sub_device_id": "1d94:62b7"},
+    {"name": "K100-AI", "sub_device_id": "1d94:6210"},
+    {"name": "K100-AI-eco", "sub_device_id": "1d94:6211"},
+    {"name": "BW1000", "sub_device_id": "1d94:6310"},
+    {"name": "BW150", "sub_device_id": "1d94:6320"},
+    {"name": "BW151", "sub_device_id": "1d94:632a"},
+    {"name": "BW100", "sub_device_id": "1d94:6370"},
+    {"name": "BW101", "sub_device_id": "1d94:637a"},
+    {"name": "BW10", "sub_device_id": "1d94:6360"},
+    {"name": "BW11", "sub_device_id": "1d94:636a"},
+    {"name": "BW1100", "sub_device_id": "1d94:6430"},
+    {"name": "BW1101", "sub_device_id": "1d94:6433"},
+    {"name": "BW1200", "sub_device_id": "1d94:6436"}
+  ]
+}
