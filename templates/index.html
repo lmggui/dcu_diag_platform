@@ -167,6 +167,15 @@
           <textarea id="logContent" placeholder="将 dmesg / 系统日志 / 错误信息粘贴到此处...\n\n示例：\n[12345.678] hycu 0000:03:00.0: hycu:(serial:ABC123)XID:81, pasid:42, pid:1234, tgid:1234, sub block: 0, info:src_id:0 ring:241 page_fault from"></textarea>
         </div>
 
+        <div class="card">
+          <div class="card-title">日志关键字查找</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input id="searchKeywords" placeholder="输入关键字，空格分隔多个" style="flex:1;min-width:160px">
+            <button class="btn btn-ghost" onclick="doLogSearch()" style="white-space:nowrap">🔎 查找</button>
+          </div>
+          <div id="searchKeywordInfo" style="margin-top:10px;font-size:12px;color:var(--muted);display:none"></div>
+        </div>
+
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" id="analyzeBtn" onclick="doAnalyze()" style="flex:1;min-width:160px">
             <span>🔎 开始分析</span>
@@ -500,6 +509,49 @@ async function doExtractDevices(btnEl) {
 
     panel.querySelector('#deviceEmptyState')?.style?.setProperty('display', 'none');
     toast('设备识别完成', 'ok');
+  } catch(e) {
+    toast('请求失败: ' + e.message, 'err');
+  } finally {
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
+}
+
+async function doLogSearch() {
+  const content = document.getElementById('logContent').value.trim();
+  const query = document.getElementById('searchKeywords').value.trim();
+  if (!content) { toast('请先上传或粘贴日志内容', 'err'); return; }
+  if (!query) { toast('请输入要查找的关键字', 'err'); return; }
+
+  const btn = document.querySelector('#searchKeywords + .btn') || document.querySelector('.btn.btn-ghost');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<div class="spinner"></div> 查找中...';
+  btn.disabled = true;
+
+  try {
+    const fd = new FormData();
+    fd.append('content', content);
+    fd.append('query', query);
+    const res = await fetch('/api/log-search', { method:'POST', body:fd });
+    const d = await res.json();
+    if (d.error) { toast(d.error, 'err'); return; }
+
+    document.getElementById('emptyState').style.display = 'none';
+    const rc = document.getElementById('resultCard');
+    rc.style.display = 'block';
+    const rb = document.getElementById('resultBox');
+    rb.textContent = d.matches.length ? d.matches.map(item => `${item.line}: ${item.text}`).join('\n') : '未匹配到任何日志行';
+    rb.className = 'result-box';
+
+    const badge = document.getElementById('resultBadge');
+    badge.textContent = '🔎 关键字查找';
+    badge.className = 'badge badge-success';
+    document.getElementById('resultScore').textContent = `匹配到 ${d.count} 条结果`;
+    document.getElementById('resultMeta').textContent = `关键字：${d.query}`;
+
+    document.getElementById('deviceInfoSection').style.display = 'none';
+    document.getElementById('kbHitsSection').style.display = 'none';
+    toast('关键字查找完成', 'ok');
   } catch(e) {
     toast('请求失败: ' + e.message, 'err');
   } finally {

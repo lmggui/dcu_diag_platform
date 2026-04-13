@@ -108,6 +108,43 @@ def register_routes(app):
             return jsonify({'error': traceback.format_exc()}), 500
 
 
+    @app.route('/api/log-search', methods=['POST'])
+    def log_search():
+        try:
+            if 'file' in request.files and request.files['file'].filename:
+                f = request.files['file']
+                content = f.read().decode('utf-8', errors='replace')
+            else:
+                content = (request.form.get('content') or '').strip()
+                if not content:
+                    data = request.get_json(silent=True) or {}
+                    content = data.get('content', '').strip()
+
+            query = (request.form.get('query') or '').strip()
+            if not query:
+                data = request.get_json(silent=True) or {}
+                query = data.get('query', '').strip()
+
+            if not content:
+                return jsonify({'error': '日志内容为空'}), 400
+            if not query:
+                return jsonify({'error': '关键字不能为空'}), 400
+
+            terms = [term.lower() for term in query.split() if term.strip()]
+            if not terms:
+                return jsonify({'error': '关键字不能为空'}), 400
+
+            lines = []
+            for idx, line in enumerate(content.splitlines(), start=1):
+                text = line.lower()
+                if all(term in text for term in terms):
+                    lines.append({'line': idx, 'text': line})
+
+            return jsonify({'query': query, 'count': len(lines), 'matches': lines})
+        except Exception:
+            return jsonify({'error': traceback.format_exc()}), 500
+
+
     @app.route('/api/kb/search', methods=['GET'])
     def kb_search():
         q = request.args.get('q', '')
