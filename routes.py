@@ -67,7 +67,7 @@ def register_routes(app):
             conn = get_db()
             conn.execute(
                 'INSERT INTO fault_logs(filename,content,result,match_type,kb_ids,score) VALUES(?,?,?,?,?,?)',
-                (filename, content[:5000], result, match_type, kb_ids, top_score)
+                (filename, content, result, match_type, kb_ids, top_score)
             )
             conn.commit()
             conn.close()
