@@ -65,7 +65,7 @@
   .upload-text{color:var(--muted);font-size:13px}
 
   /* Result box */
-  .result-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;white-space:pre-wrap;font-size:13px;line-height:1.8;max-height:500px;overflow-y:auto}
+  .result-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;white-space:pre-wrap;font-size:13px;line-height:1.8;max-height:none;overflow-y:visible}
   .result-box.kb{border-left:3px solid var(--success)}
   .result-box.ai{border-left:3px solid var(--accent2)}
   .result-box.warn{border-left:3px solid var(--warn)}
@@ -200,6 +200,11 @@
           <div id="deviceInfoSection" class="device-info-section" style="margin-top:14px;display:none">
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px">📦 识别到设备</div>
             <div id="deviceInfoList" class="device-info-list" style="display:grid;gap:6px"></div>
+          </div>
+
+          <div id="keyInfoSection" style="margin-top:14px;display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">🔑 关键信息</div>
+            <div id="keyInfoList" class="device-info-list" style="display:grid;gap:6px"></div>
           </div>
 
           <div id="kbHitsSection" style="margin-top:14px;display:none">
@@ -621,6 +626,21 @@ async function doAnalyze() {
     } else {
       deviceEl.style.display = 'none';
       deviceList.innerHTML = '';
+    }
+
+    const keyEl = document.getElementById('keyInfoSection');
+    const keyList = document.getElementById('keyInfoList');
+    if (d.key_info_lines && d.key_info_lines.length) {
+      keyEl.style.display = 'block';
+      keyList.innerHTML = d.key_info_lines.map(item =>
+        `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px">
+          <span style="font-size:12px;color:var(--accent);min-width:44px">#${item.line}</span>
+          <span style="font-size:13px;flex:1;white-space:pre-wrap;word-break:break-word">${item.text}</span>
+        </div>`
+      ).join('');
+    } else {
+      keyEl.style.display = 'none';
+      keyList.innerHTML = '';
     }
 
     const hitsEl = document.getElementById('kbHitsSection');

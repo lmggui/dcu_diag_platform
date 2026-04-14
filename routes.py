@@ -7,6 +7,20 @@ from ai_service import call_ai
 from db import KB_THRESHOLD, get_db, search_kb
 from device_parser import map_devices_from_stream, map_devices_from_text
 
+KEY_INFO_TERMS = [
+    'hydcu', 'hycu', 'error', ' fail', 'failed', 'warning', 'segfault',
+    'oom', 'timeout', 'refused', 'call trace', 'panic', 'hardware error'
+]
+
+
+def extract_key_info_lines(content):
+    lines = []
+    for idx, line in enumerate(content.splitlines(), start=1):
+        text = line.lower()
+        if any(term in text for term in KEY_INFO_TERMS):
+            lines.append({'line': idx, 'text': line})
+    return lines
+
 
 def register_routes(app):
     @app.route('/')
@@ -65,6 +79,7 @@ def register_routes(app):
                     result = ai_text or 'AI 分析失败'
                 kb_ids = ','.join(str(h['row']['id']) for h in hits if h['score'] > 0)
 
+            key_info_lines = extract_key_info_lines(content)
             conn = get_db()
             conn.execute(
                 'INSERT INTO fault_logs(filename,content,result,match_type,kb_ids,score) VALUES(?,?,?,?,?,?)',
@@ -82,7 +97,8 @@ def register_routes(app):
                 'kb_hits': [{'id': h['row']['id'], 'title': h['row']['title'],
                              'category': h['row']['category'], 'score': h['score']}
                             for h in hits[:3] if h['score'] > 0],
-                'devices': devices
+                'devices': devices,
+                'key_info_lines': key_info_lines
             })
         except Exception:
             return jsonify({'error': traceback.format_exc()}), 500
