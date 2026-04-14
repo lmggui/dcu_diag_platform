@@ -11,7 +11,12 @@ _SUBDEVICE_PATTERN = re.compile(r'\b([0-9a-fA-F]{4}:[0-9a-fA-F]{4})\b')
 def _load_device_map():
     with open(DEVICE_LIST_PATH, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return {item['sub_device_id'].lower(): item['name'] for item in data.get('devices', [])}
+    device_map = {}
+    for item in data.get('devices', []):
+        sub_id = item.get('sub_device_id') or item.get('device_id')
+        if sub_id:
+            device_map[sub_id.lower()] = item['name']
+    return device_map
 
 
 def extract_sub_device_ids(text):
