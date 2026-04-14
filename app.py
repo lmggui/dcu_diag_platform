@@ -10,6 +10,8 @@ from db import init_db
 from routes import register_routes
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = None
+app.config['MAX_FORM_MEMORY_SIZE'] = None
 
 @app.errorhandler(RequestEntityTooLarge)
 def handle_large_file(error):
